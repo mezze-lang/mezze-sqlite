@@ -1,0 +1,22 @@
+[package]
+name = "mezze_sqlite"
+version = "0.1.0"
+
+[lib]
+path = "src/sqlite.mz"
+
+# The driver, and the only reason this package exists.
+#
+# `std::effects::db` already has the `SqliteDb` performer — SQLite is the one
+# flavour the standard library knows, because an embedded database with no
+# server is worth that. What the stdlib cannot carry is a JAR WITH PLATFORM
+# NATIVES in it: sqlite-jdbc ships 24 platform/arch pairs and 24.5 MB of
+# compiled libraries, and bundling a subset into the runtime means weight for
+# everyone, a native-library failure for anyone outside the subset, and a
+# native-image build that has to strip it back out again.
+#
+# So the performer is stdlib and the driver is this. Depend on this package and
+# `perform SqliteDb { path = … }` works; leave it out and the first operation
+# answers `Unavailable` telling you to add it.
+[maven]
+"org.xerial:sqlite-jdbc" = "3.51.2.0"

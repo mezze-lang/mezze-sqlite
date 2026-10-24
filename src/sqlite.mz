@@ -1,0 +1,49 @@
+# The SQLite JDBC driver, as a dependency.
+#
+# There is no Mezze code to speak of here, and that is the point: the performer
+# you want is `std::effects::db`'s `SqliteDb`, which is already in the standard
+# library. This package exists to put the DRIVER on your classpath.
+#
+# ## Why the driver is not in the runtime
+#
+# A JDBC driver for SQLite is not pure Java — it carries compiled native
+# libraries, 24 platform/arch pairs and 24.5 MB of them. Bundling a subset into
+# the runtime jar was tried and is worse than it looks:
+#
+#   - everyone pays the weight, whether they open a database or not;
+#   - anyone outside the chosen subset (FreeBSD, musl/Alpine, 32-bit, riscv)
+#     gets a native-library failure instead of a missing-driver message;
+#   - `mez build --native` has to STRIP it from the image classpath, and that
+#     strip is why `Db` silently did not work in a native binary at all.
+#
+# `__native_db_open` takes any JDBC URL, so a driver is an ordinary package
+# dependency resolved by `mez sync`. That is how `mezze-postgres` works, and
+# there is no reason for SQLite to be the exception.
+#
+# ## Usage
+#
+#     [dependencies]
+#     mezze_sqlite = "github:mezze-lang/mezze-sqlite@v0.1.0"
+#
+# Then the stdlib performer works, with nothing imported from here:
+#
+#     use std::effects::db::{ Db, SqliteDb, sql, BindParams, value_at }
+#
+#     let main = {} -> perform SqliteDb { path = "app.db" } in
+#       Db.run { q = sql { text = "select name from users where id = :id" }
+#                  .bind { params = { id = 7 } } }
+#
+# `":memory:"` is a fresh private database per scope, which is what a test
+# wants. A file database pools and runs concurrent readers; `:memory:` is capped
+# at one connection because a second connection to it would be a second, EMPTY
+# database. See `std::effects::db` for both.
+
+## Which driver this package supplies, and the JDBC URL prefix it answers to.
+##
+## Here so that a program can state its assumption in code rather than in a
+## comment — and so this module exports something, since a package whose only
+## content is a `[maven]` line is a surprising thing to read.
+pub let driver: { } -> { coordinate: Str, url_prefix: Str } = {} -> {
+  coordinate = "org.xerial:sqlite-jdbc",
+  url_prefix = "jdbc:sqlite:",
+}
